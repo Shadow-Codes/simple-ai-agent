@@ -3,25 +3,50 @@ import sys
 
 from dotenv import load_dotenv
 from google import genai
+from google.genai import types
 
-load_dotenv()
-api_key = os.environ.get("GEMINI_API_KEY")
 
-# creates gemini developer API client
-client = genai.Client(api_key=api_key)
+def main():
+    load_dotenv()
+    api_key = os.environ.get("GEMINI_API_KEY")
 
-# checks for prompt before making API call
-if len(sys.argv) < 2:
-    print("You need to enter a prompt")
-    sys.exit(1)
+    # creates gemini developer API client
+    client = genai.Client(api_key=api_key)
 
-response = client.models.generate_content(
-    model="gemini-2.0-flash-001",
-    contents=sys.argv[1],
-)
+    # checks for prompt before making API call
+    if len(sys.argv) < 2:
+        print("You need to enter a prompt")
+        sys.exit(1)
 
-metadata = response.usage_metadata
+    if len(sys.argv) == 3:
+        generate_content(client, sys.argv[1], sys.argv[2])
+    else:
+        generate_content(client, sys.argv[1])
 
-print(response.text)
-print(f"Prompt tokens: {metadata.prompt_token_count}")
-print(f"Response tokens: {metadata.candidates_token_count}")
+
+def generate_content(client, user_prompt, flag=""):
+    messages = [
+        types.Content(role="user", parts=[types.Part(text=user_prompt)]),
+    ]
+
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=messages,
+        )
+
+        metadata = response.usage_metadata
+
+        if flag == "--verbose":
+            print(f"User prompt: {user_prompt}")
+            print(response.text)
+            print(f"Prompt tokens: {metadata.prompt_token_count}")
+            print(f"Response tokens: {metadata.candidates_token_count}")
+        else:
+            print(response.text)
+    except Exception as e:
+        print(e)
+
+
+if __name__ == "__main__":
+    main()
