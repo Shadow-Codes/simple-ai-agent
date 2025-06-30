@@ -17,21 +17,32 @@ def main():
         print("You need to enter a prompt")
         sys.exit(1)
 
-    generate_content(client, sys.argv[1])
+    if len(sys.argv) == 3:
+        generate_content(client, sys.argv[1], sys.argv[2])
+    else:
+        generate_content(client, sys.argv[1])
 
 
-def generate_content(client, prompt):
+def generate_content(client, prompt, flag=""):
     messages = [
         types.Content(role="user", parts=[types.Part(text=prompt)]),
     ]
-    response = client.models.generate_content(
-        model="gemini-2.0-flash-001",
-        contents=messages,
-    )
 
-    print(response.text)
-    print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-    print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    try:
+        response = client.models.generate_content(
+            model="gemini-2.0-flash-001",
+            contents=messages,
+        )
+
+        if flag == "--verbose":
+            print(f"User prompt: {prompt}")
+            print(response.text)
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        else:
+            print(response.text)
+    except Exception as e:
+        print(e)
 
 
 if __name__ == "__main__":
