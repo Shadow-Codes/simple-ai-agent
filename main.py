@@ -1,4 +1,5 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 from google import genai
@@ -10,9 +11,17 @@ def main():
 
     client = genai.Client(api_key=api_key)
 
+    # checks for prompt before making API call
+    if len(sys.argv) < 2:
+        print("You need to enter a prompt")
+        sys.exit(1)
+
+    generate_content(client, sys.argv[1])
+
+def generate_content(client, prompt):
     response = client.models.generate_content(
         model="gemini-2.0-flash-001",
-        contents="Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.",
+        contents=prompt
     )
 
     print(response.text)
