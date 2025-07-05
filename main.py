@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
+from functions.get_files_info import schema_get_files_info
+
 
 def main():
     load_dotenv()
@@ -24,7 +26,21 @@ def main():
 
 
 def generate_content(client, prompt, flag=""):
-    system_prompt = 'Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
+    system_prompt = """
+You are a helpful AI coding agent.
+
+When a user asks a question or makes a request, make a function call plan. You can perform following operations:
+
+- List files and directories
+
+All paths you provide should be relative to working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+"""
+
+    available_functions = types.Tool(
+        function_declarations=[
+            schema_get_files_info,
+        ]
+    )
 
     messages = [
         types.Content(role="user", parts=[types.Part(text=prompt)]),
@@ -34,16 +50,26 @@ def generate_content(client, prompt, flag=""):
         response = client.models.generate_content(
             model="gemini-2.0-flash-001",
             contents=messages,
-            config=types.GenerateContentConfig(system_instruction=system_prompt),
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
         )
 
-        if flag == "--verbose":
-            print(f"User prompt: {prompt}")
-            print(response.text)
-            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        if response.function_calls:
+            for call in response.function_calls:
+                func_name = call.name
+                func_args = call.args if call.args else {"directory": "."}
+                print(f"Calling function: {func_name}({func_args})")
         else:
-            print(response.text)
+            if flag == "--verbose":
+                print(f"User prompt: {prompt}")
+                print(response.text)
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(
+                    f"Response tokens: {response.usage_metadata.candidates_token_count}"
+                )
+            else:
+                print(response.text)
     except Exception as e:
         print(e)
 
