@@ -5,10 +5,7 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-from functions.get_file_content import schema_get_file_content
-from functions.get_files_info import schema_get_files_info
-from functions.run_python import schema_run_python_file
-from functions.write_file import schema_write_file
+from call_function import available_functions, call_function
 
 
 def main():
@@ -42,15 +39,6 @@ When a user asks a question or makes a request, make a function call plan. You c
 All paths you provide should be relative to working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
 """
 
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-            schema_get_file_content,
-            schema_run_python_file,
-            schema_write_file,
-        ]
-    )
-
     messages = [
         types.Content(role="user", parts=[types.Part(text=prompt)]),
     ]
@@ -64,11 +52,17 @@ All paths you provide should be relative to working directory. You do not need t
             ),
         )
 
+        verbose = flag == "--verbose"
+
         if response.function_calls:
             for call in response.function_calls:
-                func_name = call.name
-                func_args = call.args if call.args else {"directory": "."}
-                print(f"Calling function: {func_name}({func_args})")
+                result = call_function(call, verbose)
+
+                if not result.parts[0].function_response.response:
+                    raise Exception("Function call failed")
+
+                if verbose:
+                    print(f"-> {result.parts[0].function_response.response}")
         else:
             if flag == "--verbose":
                 print(f"User prompt: {prompt}")
